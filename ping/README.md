@@ -1,1 +1,1 @@
-https://www.geeksforgeeks.org/ping-in-c/
+Program based on: https://www.geeksforgeeks.org/ping-in-c/
