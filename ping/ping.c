@@ -121,7 +121,7 @@ void send_ping(int sockfd, struct sockaddr_in *ping_addr, char* ip_addr, char* h
         pkt.hdr.checksum = checksum(&pkt, sizeof(pkt));
 
         usleep(PING_SLEEP_RATE);
-
+        printf("Packet type: %d\n", pkt.hdr.type);
         //send packet
         clock_gettime(CLOCK_MONOTONIC, &time_start);
         int sent = sendto(sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr*) ping_addr,
@@ -133,6 +133,8 @@ void send_ping(int sockfd, struct sockaddr_in *ping_addr, char* ip_addr, char* h
         }
 
         int addr_len = sizeof(*recv_sockaddr);
+        bzero(&pkt, sizeof(pkt));
+        printf("Packet type: %d\n", pkt.hdr.type);
         int recv = recvfrom(sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr*) recv_sockaddr,
                 &addr_len);
 
@@ -149,6 +151,7 @@ void send_ping(int sockfd, struct sockaddr_in *ping_addr, char* ip_addr, char* h
                    PING_PACKET_SIZE, hostname,
                     ip_addr, msg_count,
                     ttl, rtt);
+            printf("Packet type: %d\n", pkt.hdr.type);
 
             msg_received_count++;
 

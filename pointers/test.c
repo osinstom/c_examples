@@ -16,6 +16,7 @@ int main(int argc, char *argv[])
 
 void basic_test()
 {
+    puts("Hello world");
     printf("Hello world!\n");
     int i = 6;
     int *p = &i;
