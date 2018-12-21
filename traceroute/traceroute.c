@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
@@ -60,7 +61,6 @@ unsigned short checksum(void *b, int len) {
 
 char* do_dns_lookup(char *hostname, struct sockaddr_in *addr)
 {
-    printf("\nResolving DNS..\n");
     struct hostent *host_entity;
 
     char *ip = (char*) malloc(NI_MAXHOST*sizeof(char));
@@ -94,6 +94,8 @@ void do_traceroute(int sockfd, struct sockaddr_in *addr_conn, char *addr) {
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,
                (const char*)&tv_out, sizeof tv_out);
 
+    struct in_addr last_addr;
+
     while(loop)
     {
         int sockopt = setsockopt(sockfd, SOL_IP, IP_TTL, &ttl, sizeof(ttl));
@@ -117,7 +119,6 @@ void do_traceroute(int sockfd, struct sockaddr_in *addr_conn, char *addr) {
         pkt.hdr.checksum = checksum(&pkt, sizeof(pkt));
 
         usleep(PING_SLEEP_RATE);
-        printf("Packet type: %d\n", pkt.hdr.type);
 
         int sent = sendto(sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr*) addr_conn, sizeof(*addr_conn));
 
@@ -125,17 +126,35 @@ void do_traceroute(int sockfd, struct sockaddr_in *addr_conn, char *addr) {
         {
             printf("\nSending packet failed!\n");
         } else {
-
+            char buf[64];
             int addr_len = sizeof(*recv_sockaddr);
-            int recv = recvfrom(sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr*) recv_sockaddr,
+            int recv = recvfrom(sockfd, buf, sizeof(buf), 0, (struct sockaddr*) recv_sockaddr,
                                 &addr_len);
-            
-            printf("Packet type: %d, Code= %d\n", pkt.hdr.type, pkt.hdr.code);
 
-            ttl++;
+            struct ip *iphdr = (struct ip *)buf;
+            struct icmp *icmp_reply = (struct icmp *)(buf + (iphdr->ip_hl * 4));
+
+            if (icmp_reply->icmp_type == ICMP_TIME_EXCEEDED || icmp_reply->icmp_type == ICMP_ECHOREPLY)
+            {
+                printf("%d  ", msg_count);
+                if (iphdr->ip_src.s_addr != last_addr.s_addr) {
+                    printf("%s", inet_ntoa(iphdr->ip_src));
+                } else {
+                    printf("* * *");
+                }
+                printf("\n");
+
+                last_addr = iphdr->ip_src;
+            }
+            if (icmp_reply->icmp_type == ICMP_ECHOREPLY)
+            {
+                if ( iphdr->ip_src.s_addr == addr_conn->sin_addr.s_addr) {
+                    puts("Traceroute finished.");
+                    stop();
+                }
+            }
         }
-
-
+        ttl++;
     }
 
 }
@@ -160,7 +179,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    printf("IP Address: %s\n", ip_addr);
+    printf("IP Address: %s\n\n", ip_addr);
 
     sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 
