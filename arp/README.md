@@ -1,3 +1,10 @@
-In order to send a raw ARP packet the program needs to:
-- open a socket
-- bind the socket to interface
+### Usage ###
+
+Compile ARP program:
+
+`gcc arp.c -o arp.out`
+
+
+Run ARP program with sudo:
+
+`sudo ./arp.out eth0 10.0.2.2`
